@@ -3,6 +3,7 @@ import { NATIVE_SUPPORT } from '@main/native'
 import { GameClientMain } from '@main/shards/game-client'
 import icon from '@resources/LA_ICON.ico?asset&asarUnpack'
 import type { DetectedAugmentCard } from '@shared/shards/window-manager'
+import { formatError } from '@shared/utils/errors'
 import { screen } from 'electron'
 import { compareShallow } from 'mobx'
 import { z } from 'zod'
@@ -270,25 +271,46 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
             'stateful',
             async (event) => {
               if (event.pressed) {
+                this._logger.info(`[augment-overlay] shortcut pressed: ${shortcut}`)
+
                 if (!this.settings.enabled) {
+                  this._logger.warn('[augment-overlay] shortcut ignored: window disabled')
+
                   return
                 }
 
-                if (is.dev || (await GameClientMain.isGameClientForeground())) {
+                let foreground = true
+
+                try {
+                  foreground = is.dev || (await GameClientMain.isGameClientForeground())
+                } catch (error) {
+                  this._logger.warn(
+                    `[augment-detect] foreground check failed, fail-open: ${formatError(error)}`
+                  )
+                }
+
+                if (foreground) {
                   this.show(true)
                   this._applyOverlayWindowBehavior()
                   this._window?.setIgnoreMouseEvents(false)
                   this.state.setFakeShow(true)
+                  this._logger.info('[augment-overlay] manual overlay shown')
+                } else {
+                  this._logger.info('[augment-overlay] shortcut ignored: game not foreground')
                 }
               } else {
+                this._logger.info('[augment-overlay] shortcut released, hide')
                 this._window?.setIgnoreMouseEvents(true)
                 this.state.setFakeShow(false)
                 this.hide()
               }
             }
           )
-        } catch {
-          this._logger.warn('Failed to register augment-overlay window shortcut')
+          this._logger.info(`[augment-overlay] shortcut registered: ${shortcut}`)
+        } catch (error) {
+          this._logger.warn(
+            `Failed to register augment-overlay window shortcut: ${formatError(error)}`
+          )
           this._settingService.set('showShortcut', null)
         }
       },
