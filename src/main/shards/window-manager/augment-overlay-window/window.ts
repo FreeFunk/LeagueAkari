@@ -158,7 +158,7 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
 
     // 窗口宽度与三卡行等宽, 使逐卡标注与真实卡片一一对齐
     const targetWidth = Math.round(rowRight - rowLeft + 24)
-    const targetHeight = 64
+    const targetHeight = 110
 
     const workArea = display.workArea
     const x = Math.round(

@@ -6,18 +6,24 @@
     <SetupInAppScope />
 
     <template v-if="detectMode">
-      <div class="flex w-full items-start justify-around gap-1">
+      <div class="flex w-full items-start justify-around gap-2">
         <div
           v-for="(card, index) in detectedCards"
           :key="index"
-          class="flex min-w-0 flex-col items-center gap-0.5"
+          class="flex min-w-0 flex-col items-center gap-1"
         >
-          <AugmentDisplay :augment-id="card.augmentId ?? undefined" :size="26" class="shrink-0" />
+          <AugmentDisplay :augment-id="card.augmentId ?? undefined" :size="44" class="shrink-0" />
           <span
-            class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-xs text-[10px] leading-4 font-bold"
+            class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-base leading-7 font-bold"
             :class="gradeClass(gradeOf(card))"
           >
             {{ gradeLabel(card) }}
+          </span>
+          <span class="max-w-40 truncate text-center text-xs font-bold text-white/95">
+            {{ nameOf(card) }}
+          </span>
+          <span v-if="winRateOf(card) !== null" class="text-xs text-emerald-300 tabular-nums">
+            {{ formatPercent(winRateOf(card)!) }}
           </span>
         </div>
       </div>
@@ -36,7 +42,10 @@
 <script setup lang="ts">
 import AugmentRecommendationBar from '@renderer-shared/components/augment-recommendation/AugmentRecommendationBar.vue'
 import AugmentDisplay from '@renderer-shared/components/widgets/AugmentDisplay.vue'
-import { gradeAugmentsByTier } from '@shared/data-adapter/champion-data/augment-grades'
+import {
+  getTopAugmentsPerTier,
+  gradeAugmentsByTier
+} from '@shared/data-adapter/champion-data/augment-grades'
 import type {
   ChampionDataDetails,
   ChampionDataMode
@@ -46,6 +55,7 @@ import { SetupInAppScope } from '@renderer-shared/shards/setup-in-app-scope/setu
 import { ChampionDataRenderer } from '@renderer-shared/shards/champion-data'
 import { useLeagueClientStore } from '@renderer-shared/shards/league-client/store'
 import { LoggerRenderer } from '@renderer-shared/shards/logger'
+import { useAkariResourceProvider } from '@renderer-shared/providers/akari-resource'
 import { useAugmentOverlayWindowStore } from '@renderer-shared/shards/window-manager/store'
 import { WindowManagerRenderer } from '@renderer-shared/shards/window-manager'
 import { useElementSize } from '@vueuse/core'
@@ -62,6 +72,7 @@ const logger = useInstance(LoggerRenderer)
 const championData = useInstance(ChampionDataRenderer)
 const lcs = useLeagueClientStore()
 const aows = useAugmentOverlayWindowStore()
+const resources = useAkariResourceProvider()
 
 const GAME_MODE_TO_CHAMPION_DATA_MODE: Record<string, ChampionDataMode> = {
   CHERRY: 'arena',
@@ -94,16 +105,19 @@ const currentChampionId = computed(() => {
 
 const groups = computed(() => {
   const augments = details.value?.sections.augments ?? []
-  return gradeAugmentsByTier(augments)
+  return getTopAugmentsPerTier(augments, 3)
 })
 
-const gradeById = computed(() => {
-  const map = new Map<number, AugmentGrade>()
+const gradeInfoById = computed(() => {
+  const map = new Map<number, { grade: AugmentGrade; winRate: number | null }>()
 
-  for (const group of groups.value) {
+  for (const group of gradeAugmentsByTier(details.value?.sections.augments ?? [])) {
     for (const item of group.items) {
       if (!map.has(item.augment.augmentId)) {
-        map.set(item.augment.augmentId, item.grade)
+        map.set(item.augment.augmentId, {
+          grade: item.grade,
+          winRate: item.augment.performance.winRate
+        })
       }
     }
   }
@@ -119,11 +133,31 @@ function gradeOf(card: DetectedAugmentCard): AugmentGrade | null {
     return null
   }
 
-  return gradeById.value.get(card.augmentId) ?? null
+  return gradeInfoById.value.get(card.augmentId)?.grade ?? null
 }
 
 function gradeLabel(card: DetectedAugmentCard): string {
   return gradeOf(card) ?? '?'
+}
+
+function nameOf(card: DetectedAugmentCard): string {
+  if (card.augmentId === null) {
+    return '?'
+  }
+
+  return resources.augments.name(card.augmentId)
+}
+
+function winRateOf(card: DetectedAugmentCard): number | null {
+  if (card.augmentId === null) {
+    return null
+  }
+
+  return gradeInfoById.value.get(card.augmentId)?.winRate ?? null
+}
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(0)}%`
 }
 
 function gradeClass(grade: AugmentGrade | null): string {
