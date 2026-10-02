@@ -51,7 +51,7 @@ import { LoggerRenderer } from '@renderer-shared/shards/logger'
 import { useAugmentOverlayWindowStore } from '@renderer-shared/shards/window-manager/store'
 import { WindowManagerRenderer } from '@renderer-shared/shards/window-manager'
 import { useElementSize } from '@vueuse/core'
-import { computed, ref, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 
 import type { AugmentGrade } from '@shared/data-adapter/champion-data/augment-grades'
 import type { DetectedAugmentCard } from '@shared/shards/window-manager'
@@ -202,6 +202,36 @@ watch(
     loadRecommendations()
   },
   { immediate: true }
+)
+
+onMounted(() => {
+  logger.info('[augment-overlay] renderer mounted')
+
+  window.addEventListener('error', (event) => {
+    logger.error(`[augment-overlay] renderer error: ${event.message}`)
+  })
+})
+
+watch(
+  [championDataMode, currentChampionId],
+  ([mode, championId]) => {
+    logger.info(
+      `[augment-overlay] recommendation source updated: mode=${mode ?? 'none'}, championId=${championId ?? 'none'}`
+    )
+  },
+  { immediate: true }
+)
+
+watch(
+  () => aows.detectedCards,
+  (cards) => {
+    logger.info(
+      `[augment-overlay] detected cards updated: ${JSON.stringify(
+        cards?.map((card) => ({ id: card.augmentId, c: Number(card.confidence.toFixed(2)) })) ??
+          null
+      )}`
+    )
+  }
 )
 
 let lastAppliedWidth = 0

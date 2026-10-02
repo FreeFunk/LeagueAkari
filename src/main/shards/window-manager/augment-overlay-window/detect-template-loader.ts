@@ -2,7 +2,7 @@ import { LeagueClientMain } from '@main/shards/league-client'
 import { GtimgApi } from '@shared/data-sources/gtimg'
 import { formatError } from '@shared/utils/errors'
 import axios from 'axios'
-import { app } from 'electron'
+import { app, nativeImage } from 'electron'
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 
@@ -154,7 +154,7 @@ export class AugmentDetectTemplateLoader {
   ): Promise<Electron.NativeImage | null> {
     try {
       const buffer = await fetcher()
-      const image = Electron.NativeImage.createFromBuffer(buffer)
+      const image = nativeImage.createFromBuffer(buffer)
 
       if (image.isEmpty()) {
         return null
