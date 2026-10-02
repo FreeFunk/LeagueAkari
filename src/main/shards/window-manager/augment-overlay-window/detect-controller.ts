@@ -19,19 +19,19 @@ import type { AugmentOverlayWindowSettings, AugmentOverlayWindowState } from './
 const TICK_MS = 600
 
 /**
- * 诊断转储的最小间隔 (ms)
+ * 截屏缩放比例 (相对全分辨率)
  */
-const GATES_DUMP_INTERVAL_MS = 15000
-
-/**
- * 预览截屏缩放比例, 用于廉价的弹卡检测
- */
-const PREVIEW_SCALE = 0.35
+const CAPTURE_SCALE = 0.5
 
 /**
  * 连续未检出次数达到该值后隐藏悬浮条
  */
 const MISS_STREAK_TO_HIDE = 3
+
+/**
+ * 连续命中次数达到该值后才显示悬浮条 (防止瞬时误判)
+ */
+const HIT_STREAK_TO_SHOW = 2
 
 /**
  * 图标识别的最低置信度, 低于该值标记为"无法识别"
@@ -43,34 +43,34 @@ const IDENTIFY_CONFIDENCE_THRESHOLD = 0.55
  */
 const MIN_IDENTIFIED_CARDS = 2
 
-// 搜索带范围 (屏幕比例坐标), 三卡图标只会出现在画面中下部
-const SEARCH_BAND_X = [0.15, 0.85] as const
-const SEARCH_BAND_Y = [0.4, 0.92] as const
+/**
+ * 诊断转储的最小间隔 (ms)
+ */
+const GATES_DUMP_INTERVAL_MS = 15000
 
-// 图标候选框的尺寸约束 (相对屏幕短边的比例)
-const ICON_MIN_WIDTH_RATIO = 0.025
-const ICON_MAX_WIDTH_RATIO = 0.11
-
-interface FractionalBox {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+/**
+ * 海克斯三卡图标槽位 (屏幕比例坐标), 基于 16:9 分辨率 + 默认 UI 缩放实测。
+ * 卡片行: x [0.23, 0.77] 三等分, 图标位于卡片上部 y [0.24, 0.355]。
+ * 若分辨率/UI 缩放不同导致偏差, 调整此处常量。
+ */
+const SLOT_BOXES: Array<{ x: number; y: number; width: number; height: number }> = [
+  { x: 0.2775, y: 0.24, width: 0.065, height: 0.115 },
+  { x: 0.4675, y: 0.24, width: 0.065, height: 0.115 },
+  { x: 0.6575, y: 0.24, width: 0.065, height: 0.115 }
+]
 
 /**
  * 海克斯三卡自动识别控制器
  *
- * 在斗魂竞技场/海克斯大乱斗对局进行中周期性截屏:
- * 1. 低分辨率预览截屏做廉价的"弹卡"检测 (图标色块扫描)
- * 2. 疑似弹出时做全分辨率截屏, 精确定位三个图标框
- * 3. 将图标框与本地海克斯图标模板做像素比对, 识别 augmentId
- * 4. 识别结果写入窗口 state, 由悬浮窗展示逐卡推荐
+ * 在斗魂竞技场/海克斯大乱斗对局进行中周期性截屏, 对三个固定槽位
+ * 截取图标区域并与本地海克斯图标模板做像素比对, 识别 augmentId。
+ * 识别结果写入窗口 state, 由悬浮窗展示逐卡推荐。
  */
 export class AugmentOverlayDetectController {
   private _timer: NodeJS.Timeout | null = null
   private _busy = false
   private _missStreak = MISS_STREAK_TO_HIDE
+  private _hitStreak = 0
   private _gatesConfirmedLogged = false
   private _lastGatesDumpAt = 0
 
@@ -104,6 +104,8 @@ export class AugmentOverlayDetectController {
       this._deps.logger.info('[augment-detect] detection loop stopped')
     }
 
+    this._missStreak = MISS_STREAK_TO_HIDE
+    this._hitStreak = 0
     this._pushCleared()
   }
 
@@ -117,6 +119,7 @@ export class AugmentOverlayDetectController {
     try {
       if (!NATIVE_SUPPORT.nativeInput.available || !this._deps.settings.autoDetect) {
         this._dumpGatesThrottled('native-or-settings')
+
         return this._handleMiss()
       }
 
@@ -143,41 +146,9 @@ export class AugmentOverlayDetectController {
         )
       }
 
-      // 廉价预览: 低分辨率下检测三卡是否弹出
-      const preview = await this._capture(PREVIEW_SCALE)
+      const image = await this._capture(CAPTURE_SCALE)
 
-      if (!preview) {
-        return this._handleMiss()
-      }
-
-      const previewBoxes = this._findIconBoxes(preview)
-
-      if (previewBoxes.length < 3) {
-        this._dumpGatesThrottled('no-cards-in-preview', {
-          image: preview,
-          previewBoxes: previewBoxes.length
-        })
-
-        return this._handleMiss()
-      }
-
-      // 疑似弹出: 全分辨率识别
-      const full = await this._capture(1)
-
-      if (!full) {
-        return this._handleMiss()
-      }
-
-      const boxes = this._findIconBoxes(full)
-      const row = pickCardRow(boxes)
-
-      if (!row || row.length < 3) {
-        this._dumpGatesThrottled('no-card-row-in-full', {
-          image: full,
-          previewBoxes: previewBoxes.length,
-          fullBoxes: boxes.length
-        })
-
+      if (!image) {
         return this._handleMiss()
       }
 
@@ -187,23 +158,23 @@ export class AugmentOverlayDetectController {
         return this._handleMiss()
       }
 
-      const cards = row
-        .slice(0, 3)
-        .map((box) => this._identify(full, box, templates))
-        .sort((a, b) => a.x - b.x)
+      const cards = SLOT_BOXES.map((box) => this._identify(image, box, templates))
       const identified = cards.filter((card) => card.augmentId !== null).length
 
       if (identified < MIN_IDENTIFIED_CARDS) {
-        this._deps.logger.warn(
-          `[augment-detect] low recognition quality: ${identified}/${cards.length}`
-        )
-        this._dumpDebug(full, cards, gameMode, 'low-quality')
+        this._dumpGatesThrottled('low-quality', { image, cards })
 
         return this._handleMiss()
       }
 
       this._missStreak = 0
-      this._dumpDebug(full, cards, gameMode, 'recognized')
+      this._hitStreak++
+
+      if (this._hitStreak < HIT_STREAK_TO_SHOW) {
+        return
+      }
+
+      this._dumpDebug(image, cards, gameMode, 'recognized')
       this._pushCards(cards)
     } catch (error) {
       this._deps.logger.warn(
@@ -215,6 +186,7 @@ export class AugmentOverlayDetectController {
   }
 
   private _handleMiss() {
+    this._hitStreak = 0
     this._missStreak++
 
     if (this._missStreak >= MISS_STREAK_TO_HIDE) {
@@ -241,42 +213,7 @@ export class AugmentOverlayDetectController {
   }
 
   /**
-   * 节流版诊断转储: 在支持的对局中无论识别是否成功都会记录
-   * 门槛状态与截屏, 用于远程排查"什么都没发生"类问题
-   */
-  private _dumpGatesThrottled(
-    stage: string,
-    extra?: { image?: Electron.NativeImage; previewBoxes?: number; fullBoxes?: number }
-  ) {
-    const now = Date.now()
-
-    if (!this._deps.settings.debugDump || now - this._lastGatesDumpAt < GATES_DUMP_INTERVAL_MS) {
-      return
-    }
-
-    this._lastGatesDumpAt = now
-
-    const session = this._deps.leagueClient.data.gameflow.session
-
-    void saveDebugDump({
-      image: extra?.image,
-      payload: {
-        stage,
-        capturedAt: new Date().toISOString(),
-        nativeInputAvailable: NATIVE_SUPPORT.nativeInput.available,
-        isElevated,
-        enabled: this._deps.settings.enabled,
-        autoDetect: this._deps.settings.autoDetect,
-        phase: session?.phase ?? null,
-        gameMode: session?.gameData.queue.gameMode ?? null,
-        previewBoxes: extra?.previewBoxes ?? null,
-        fullBoxes: extra?.fullBoxes ?? null
-      }
-    })
-  }
-
-  /**
-   * 截取主显示器画面, scale < 1 时返回缩放后的预览图
+   * 截取主显示器画面, scale < 1 时返回缩放后的图像
    */
   private async _capture(scale: number) {
     const display = screen.getPrimaryDisplay()
@@ -299,133 +236,11 @@ export class AugmentOverlayDetectController {
   }
 
   /**
-   * 在截屏中定位海克斯图标候选框, 返回屏幕比例坐标
-   */
-  private _findIconBoxes(image: Electron.NativeImage): FractionalBox[] {
-    const { width, height } = image.getSize()
-    const bitmap = image.toBitmap()
-    const bytesPerPixel = 4
-
-    const bandXStart = Math.floor(width * SEARCH_BAND_X[0])
-    const bandXEnd = Math.ceil(width * SEARCH_BAND_X[1])
-    const bandYStart = Math.floor(height * SEARCH_BAND_Y[0])
-    const bandYEnd = Math.ceil(height * SEARCH_BAND_Y[1])
-    const bandRows = bandYEnd - bandYStart
-
-    if (bandXEnd <= bandXStart || bandRows <= 0) {
-      return []
-    }
-
-    // 逐列统计"图标像素"(鲜艳或明亮)数量
-    const columnCounts = new Uint32Array(bandXEnd - bandXStart)
-    const columnMask: Uint8Array[] = []
-
-    for (let y = bandYStart; y < bandYEnd; y++) {
-      const rowMask = new Uint8Array(bandXEnd - bandXStart)
-      const rowOffset = y * width * bytesPerPixel
-
-      for (let x = bandXStart; x < bandXEnd; x++) {
-        const offset = rowOffset + x * bytesPerPixel
-        const b = bitmap[offset]
-        const g = bitmap[offset + 1]
-        const r = bitmap[offset + 2]
-        const max = Math.max(r, g, b)
-        const min = Math.min(r, g, b)
-        const saturation = max - min
-        const luminance = 0.299 * r + 0.587 * g + 0.114 * b
-
-        if ((saturation > 40 && luminance > 60) || luminance > 190) {
-          rowMask[x - bandXStart] = 1
-          columnCounts[x - bandXStart]++
-        }
-      }
-
-      columnMask.push(rowMask)
-    }
-
-    // 列聚类: 连续的"活跃列"组成一个候选块
-    const activeThreshold = Math.max(2, Math.floor(bandRows * 0.05))
-    const gapTolerance = Math.max(2, Math.floor(width * 0.01))
-    const candidates: Array<{ x0: number; x1: number }> = []
-    let runStart = -1
-    let runEnd = -1
-
-    for (let x = 0; x < columnCounts.length; x++) {
-      if (columnCounts[x] >= activeThreshold) {
-        if (runStart === -1) {
-          runStart = x
-        }
-
-        runEnd = x
-      } else if (runStart !== -1 && x - runEnd > gapTolerance) {
-        candidates.push({ x0: runStart, x1: runEnd })
-        runStart = -1
-        runEnd = -1
-      }
-    }
-
-    if (runStart !== -1) {
-      candidates.push({ x0: runStart, x1: runEnd })
-    }
-
-    // 由列块推导图标框, 并按尺寸约束过滤
-    const minIconWidth = width * ICON_MIN_WIDTH_RATIO
-    const maxIconWidth = width * ICON_MAX_WIDTH_RATIO
-    const boxes: FractionalBox[] = []
-
-    for (const candidate of candidates) {
-      const boxWidth = candidate.x1 - candidate.x0 + 1
-
-      if (boxWidth < minIconWidth || boxWidth > maxIconWidth) {
-        continue
-      }
-
-      let y0 = -1
-      let y1 = -1
-
-      for (let i = 0; i < columnMask.length; i++) {
-        const rowMask = columnMask[i]
-
-        for (let x = candidate.x0; x <= candidate.x1; x++) {
-          if (rowMask[x - bandXStart]) {
-            if (y0 === -1) {
-              y0 = i
-            }
-
-            y1 = i
-            break
-          }
-        }
-      }
-
-      if (y0 === -1) {
-        continue
-      }
-
-      const boxHeight = y1 - y0 + 1
-      const aspect = boxWidth / boxHeight
-
-      if (aspect < 0.5 || aspect > 2.0 || boxHeight > boxWidth * 3) {
-        continue
-      }
-
-      boxes.push({
-        x: (candidate.x0 + bandXStart) / width,
-        y: (y0 + bandYStart) / height,
-        width: boxWidth / width,
-        height: boxHeight / height
-      })
-    }
-
-    return boxes
-  }
-
-  /**
-   * 将图标框与模板库比对, 返回最匹配的海克斯
+   * 将槽位框截取的图标与模板库比对, 返回最匹配的海克斯
    */
   private _identify(
     image: Electron.NativeImage,
-    box: FractionalBox,
+    box: { x: number; y: number; width: number; height: number },
     templates: AugmentIconTemplate[]
   ): DetectedAugmentCard {
     const { width, height } = image.getSize()
@@ -479,6 +294,40 @@ export class AugmentOverlayDetectController {
     }
   }
 
+  /**
+   * 节流版诊断转储: 在支持的对局中无论识别是否成功都会记录
+   * 门槛状态与截屏, 用于远程排查"什么都没发生"类问题
+   */
+  private _dumpGatesThrottled(
+    stage: string,
+    extra?: { image?: Electron.NativeImage; cards?: DetectedAugmentCard[] }
+  ) {
+    const now = Date.now()
+
+    if (!this._deps.settings.debugDump || now - this._lastGatesDumpAt < GATES_DUMP_INTERVAL_MS) {
+      return
+    }
+
+    this._lastGatesDumpAt = now
+
+    const session = this._deps.leagueClient.data.gameflow.session
+
+    void saveDebugDump({
+      image: extra?.image,
+      payload: {
+        stage,
+        capturedAt: new Date().toISOString(),
+        nativeInputAvailable: NATIVE_SUPPORT.nativeInput.available,
+        isElevated,
+        enabled: this._deps.settings.enabled,
+        autoDetect: this._deps.settings.autoDetect,
+        phase: session?.phase ?? null,
+        gameMode: session?.gameData.queue.gameMode ?? null,
+        cards: extra?.cards ?? null
+      }
+    })
+  }
+
   private _dumpDebug(
     image: Electron.NativeImage,
     cards: DetectedAugmentCard[],
@@ -494,45 +343,6 @@ export class AugmentOverlayDetectController {
       payload: { gameMode, stage, cards, capturedAt: new Date().toISOString() }
     })
   }
-}
-
-/**
- * 从候选框中挑选最可能是"三卡一行"的组合
- */
-function pickCardRow(boxes: FractionalBox[]): FractionalBox[] | null {
-  if (boxes.length < 3) {
-    return null
-  }
-
-  let best: FractionalBox[] | null = null
-
-  for (let i = 0; i < boxes.length; i++) {
-    const row = [boxes[i]]
-
-    for (let j = i + 1; j < boxes.length; j++) {
-      if (isSameRow(boxes[i], boxes[j])) {
-        row.push(boxes[j])
-      }
-    }
-
-    if (row.length >= 3 && (best === null || rowTotalWidth(row) > rowTotalWidth(best))) {
-      best = row.sort((a, b) => a.x - b.x)
-    }
-  }
-
-  return best
-}
-
-function isSameRow(a: FractionalBox, b: FractionalBox): boolean {
-  const aCenter = a.y + a.height / 2
-  const bCenter = b.y + b.height / 2
-  const tolerance = Math.max(a.height, b.height) * 0.8
-
-  return Math.abs(aCenter - bCenter) <= tolerance && Math.abs(a.width - b.width) <= a.width * 0.8
-}
-
-function rowTotalWidth(row: FractionalBox[]): number {
-  return row.reduce((sum, box) => sum + box.width, 0)
 }
 
 function isSameCards(a: DetectedAugmentCard[], b: DetectedAugmentCard[]): boolean {
