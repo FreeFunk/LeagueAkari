@@ -1,5 +1,8 @@
 <template>
-  <div ref="wrapperEl" class="box-border w-fit flex-col overflow-hidden rounded bg-[#1a1a1da0] p-2">
+  <div
+    ref="wrapperEl"
+    class="box-border flex w-fit flex-col overflow-hidden rounded bg-[#1a1a1da0] p-1.5"
+  >
     <SetupInAppScope />
     <AugmentRecommendationBar :groups="groups" :loading="isLoading" @retry="loadRecommendations" />
   </div>
@@ -60,7 +63,7 @@ const currentChampionId = computed(() => {
 
 const groups = computed(() => {
   const augments = details.value?.sections.augments ?? []
-  return getTopAugmentsPerTier(augments, 5)
+  return getTopAugmentsPerTier(augments, 3)
 })
 
 function loadRecommendations() {
@@ -109,10 +112,23 @@ watch(
   { immediate: true }
 )
 
+let lastAppliedWidth = 0
+let lastAppliedHeight = 0
+
 watch(
   [() => width.value, () => height.value],
   async ([width, height]) => {
-    await wm.augmentOverlayWindow.setSize(Math.ceil(width), Math.ceil(height))
+    const nextWidth = Math.ceil(width)
+    const nextHeight = Math.ceil(height)
+
+    if (nextWidth === lastAppliedWidth && nextHeight === lastAppliedHeight) {
+      return
+    }
+
+    lastAppliedWidth = nextWidth
+    lastAppliedHeight = nextHeight
+
+    await wm.augmentOverlayWindow.setSize(nextWidth, nextHeight)
   },
   {
     immediate: true

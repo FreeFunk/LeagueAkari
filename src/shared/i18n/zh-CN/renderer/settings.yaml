@@ -360,16 +360,16 @@ settings:
       title: 海克斯推荐悬浮条
       titleRequireAdmin: 海克斯推荐悬浮条 (管理员权限)
       description:
-        lineA: 仅在斗魂竞技场与海克斯大乱斗的对局中显示，需启用游戏的无边框或窗口模式
+        lineA: 仅支持斗魂竞技场与海克斯大乱斗，需将游戏画面切换为无边框或窗口模式
       enabled:
         label: 启用海克斯推荐悬浮条
-        description: 在斗魂竞技场或海克斯大乱斗对局中，悬浮展示当前英雄的海克斯强化推荐排序
+        description: 开启后，在对局中长按快捷键即可显示当前英雄的海克斯强化推荐，松开自动隐藏
       showShortcut:
         label: 显示快捷键
-        description: 在游戏中长按快捷键可临时取消鼠标穿透，用于拖动悬浮条位置
+        description: 长按显示推荐悬浮条，松开自动隐藏。悬浮条默认鼠标穿透，不会影响游戏操作
       resetWindowPosition:
         label: 重置悬浮条位置
-        description: 将悬浮条重新放置到主屏幕中央
+        description: 将悬浮条重新放置到主屏幕右侧居中
         button: 重置
   misc:
     title: 其他

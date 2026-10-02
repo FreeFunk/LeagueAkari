@@ -2,7 +2,8 @@ import { is } from '@electron-toolkit/utils'
 import { NATIVE_SUPPORT } from '@main/native'
 import { GameClientMain } from '@main/shards/game-client'
 import icon from '@resources/LA_ICON.ico?asset&asarUnpack'
-import { compareShallow, computed } from 'mobx'
+import { screen } from 'electron'
+import { compareShallow } from 'mobx'
 import { z } from 'zod'
 
 import { BaseAkariWindow } from '../base-akari-window'
@@ -24,15 +25,12 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
   static readonly NAMESPACE_SUFFIX = 'augment-overlay-window'
   static readonly HTML_ENTRY = 'augment-overlay-window.html'
   static readonly TITLE = 'Akari Augment Overlay'
-  static readonly BASE_WIDTH = 260
-  static readonly BASE_HEIGHT = 320
-
-  /**
-   * 支持海克斯强化的游戏模式
-   */
-  static readonly SUPPORTED_GAME_MODES = ['CHERRY', 'KIWI'] as const
+  static readonly BASE_WIDTH = 240
+  static readonly BASE_HEIGHT = 120
 
   public shortcutTargetId: string
+
+  private _didDefaultPosition = false
 
   private _applyOverlayWindowBehavior() {
     if (!this._window || this._window.isDestroyed()) {
@@ -41,6 +39,25 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
 
     this._window.setSkipTaskbar(true)
     this._window.setAlwaysOnTop(true, 'screen-saver', 1)
+  }
+
+  /**
+   * 无记忆位置时默认停靠主屏幕右侧居中, 避免遮挡游戏画面中心
+   */
+  private _applyDefaultPositionIfNotRemembered() {
+    if (this._didDefaultPosition || this.state.trackedBounds || !this._window) {
+      return
+    }
+
+    this._didDefaultPosition = true
+
+    const workArea = screen.getPrimaryDisplay().workArea
+    const [width, height] = this._window.getSize()
+    const x = workArea.x + workArea.width - width - 48
+    const y = workArea.y + Math.round((workArea.height - height) / 2)
+
+    this._window.setPosition(x, y)
+    this._logger.info(`Applied default position for ${this._namespace}`)
   }
 
   constructor(_context: WindowManagerMainContext) {
@@ -134,6 +151,7 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
 
         if (this._window) {
           this._window.setIgnoreMouseEvents(true)
+          this._applyDefaultPositionIfNotRemembered()
         }
       }
     )
@@ -145,40 +163,6 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
           this._window?.setIgnoreMouseEvents(false)
         } else {
           this._window?.setIgnoreMouseEvents(true)
-        }
-      },
-      { fireImmediately: true }
-    )
-
-    const shouldShowInGame = computed(() => {
-      if (!NATIVE_SUPPORT.nativeInput.available || !this.state.ready || !this.settings.enabled) {
-        return false
-      }
-
-      const session = this._leagueClient.data.gameflow.session
-
-      if (
-        session &&
-        session.phase === 'InProgress' &&
-        AkariAugmentOverlayWindow.SUPPORTED_GAME_MODES.includes(
-          session.gameData.queue
-            .gameMode as (typeof AkariAugmentOverlayWindow.SUPPORTED_GAME_MODES)[number]
-        )
-      ) {
-        return true
-      }
-
-      return false
-    })
-
-    this._mobxUtils.reaction(
-      () => shouldShowInGame.get(),
-      (should) => {
-        if (should) {
-          this.show(true)
-          this._applyOverlayWindowBehavior()
-        } else {
-          this.hide()
         }
       },
       { fireImmediately: true }
@@ -204,17 +188,20 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
             'stateful',
             async (event) => {
               if (event.pressed) {
-                if (is.dev || (await GameClientMain.isGameClientForeground())) {
-                  if (!this.state.show) {
-                    this.show()
-                  }
+                if (!this.settings.enabled) {
+                  return
+                }
 
+                if (is.dev || (await GameClientMain.isGameClientForeground())) {
+                  this.show(true)
+                  this._applyOverlayWindowBehavior()
                   this._window?.setIgnoreMouseEvents(false)
                   this.state.setFakeShow(true)
                 }
               } else {
                 this._window?.setIgnoreMouseEvents(true)
                 this.state.setFakeShow(false)
+                this.hide()
               }
             }
           )

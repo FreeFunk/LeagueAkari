@@ -2,6 +2,13 @@
 
 日期：2026-10-02　分支：`feat/augment-overlay`　方案：B（伴随式推荐条）
 
+> **v1.1 调整（实测反馈后）**：原设计"对局进行中自动悬浮展示"在实测中严重遮挡游戏
+> （长列表居中常驻、鼠标穿透无法关闭）。调整为：**去掉对局自动展示，长按快捷键呼出、
+> 松开自动隐藏**；UI 由三档 Top5 长列表改为**三行紧凑条**（每档一行：档位标签 +
+> Top3 图标+等级徽章，约 200×100px）；默认位置改为主屏幕右侧居中；App.vue 增加
+> setSize 尺寸守卫防 resize 循环。海克斯选择阶段的自动检测（弹出/消失）留待
+> 二期探测脚本验证 API 后实现。
+
 ## 背景与痛点
 
 在斗魂竞技场（CHERRY）和海克斯大乱斗（KIWI）中，游戏内会弹出 3 张海克斯卡片供选择。
@@ -35,12 +42,12 @@
 `ChampionAugment` 自带 `rank` / `performanceScore` / `performance.winRate`。
 同一档位内（tier 1=银 / 4=金 / 8=棱彩）按 `performanceScore ?? performance.winRate` 降序排名：
 
-| 等级 | 分位 | 颜色 |
-| ---- | ------ | ---- |
-| S | 前 15% | 金色 |
-| A | 15%~35% | 绿色 |
-| B | 35%~60% | 蓝色 |
-| C | 其余 | 灰色 |
+| 等级 | 分位    | 颜色 |
+| ---- | ------- | ---- |
+| S    | 前 15%  | 金色 |
+| A    | 15%~35% | 绿色 |
+| B    | 35%~60% | 蓝色 |
+| C    | 其余    | 灰色 |
 
 每档位显示 Top 5。纯函数实现于 `src/shared/data-adapter/champion-data/augment-grades.ts`，表驱动单测。
 
@@ -59,10 +66,10 @@
 
 ## 设置项（settings key）
 
-| key | 类型 | 默认 | 说明 |
-| --- | ---- | ---- | ---- |
-| `enabled` | boolean | false | 总开关（无原生输入时强制 false，同 cd-timer） |
-| `showShortcut` | string\|null | null | 按住呼出/拖动位置的热键 |
+| key            | 类型         | 默认  | 说明                                          |
+| -------------- | ------------ | ----- | --------------------------------------------- |
+| `enabled`      | boolean      | false | 总开关（无原生输入时强制 false，同 cd-timer） |
+| `showShortcut` | string\|null | null  | 按住呼出/拖动位置的热键                       |
 
 设置 UI 加入主窗口 `MultiWindowSettings.vue`（新 section），复用 `ShortcutSelector.vue`。
 

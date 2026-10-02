@@ -362,16 +362,16 @@ settings:
       title: Augment Recommendation Overlay
       titleRequireAdmin: Augment Recommendation Overlay (Admin Required)
       description:
-        lineA: Only shown in Arena and Mayhem games. Requires borderless or windowed game mode.
+        lineA: Supports Arena and Mayhem only. Requires borderless or windowed game mode.
       enabled:
         label: Enable Augment Recommendation Overlay
-        description: Show your champion's augment recommendations as an overlay during Arena or Mayhem games
+        description: Once enabled, hold the shortcut in-game to show your champion's augment recommendations, release to hide
       showShortcut:
         label: Show Shortcut
-        description: Hold the shortcut in-game to temporarily disable mouse pass-through for dragging the overlay
+        description: Hold to show the overlay, release to hide. The overlay is mouse pass-through by default and never blocks game input
       resetWindowPosition:
         label: Reset Overlay Position
-        description: Reposition the overlay to the center of the primary screen
+        description: Reposition the overlay to the right-center of the primary screen
         button: Reset
   misc:
     title: Misc
