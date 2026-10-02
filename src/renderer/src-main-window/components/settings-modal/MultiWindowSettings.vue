@@ -318,6 +318,69 @@
           </div>
         </template>
       </SettingsSection>
+      <SettingsSection
+        setting-id="multi-window.augment-overlay"
+        :title="
+          as.isElevated
+            ? t('settings.multiWindow.augmentOverlayWindow.title')
+            : t('settings.multiWindow.augmentOverlayWindow.titleRequireAdmin')
+        "
+      >
+        <SettingsRow
+          setting-id="multi-window.augment-overlay.enabled"
+          :disabled="!as.nativeSupport.nativeInput.available"
+          :label="t('settings.multiWindow.augmentOverlayWindow.enabled.label')"
+          :label-description="t('settings.multiWindow.augmentOverlayWindow.enabled.description')"
+          :label-width="400"
+        >
+          <NSwitch
+            size="small"
+            :disabled="!as.nativeSupport.nativeInput.available"
+            :value="aows.settings.enabled"
+            @update:value="(val) => wm.augmentOverlayWindow.setEnabled(val)"
+          />
+        </SettingsRow>
+        <SettingsRow
+          setting-id="multi-window.augment-overlay.shortcut"
+          :disabled="!as.nativeSupport.nativeInput.available"
+          :label-width="400"
+          :label="t('settings.multiWindow.augmentOverlayWindow.showShortcut.label')"
+          :label-description="
+            t('settings.multiWindow.augmentOverlayWindow.showShortcut.description')
+          "
+        >
+          <ShortcutSelector
+            :target-id="AkariAugmentOverlayWindow.SHOW_WINDOW_SHORTCUT_TARGET_ID"
+            :shortcut-id="aows.settings.showShortcut"
+            @update:shortcut-id="(id) => wm.augmentOverlayWindow.setShowShortcut(id)"
+          />
+        </SettingsRow>
+        <SettingsRow
+          setting-id="multi-window.augment-overlay.reset-position"
+          :disabled="!as.nativeSupport.nativeInput.available"
+          :label="t('settings.multiWindow.augmentOverlayWindow.resetWindowPosition.label')"
+          :label-description="
+            t('settings.multiWindow.augmentOverlayWindow.resetWindowPosition.description')
+          "
+          :label-width="400"
+        >
+          <NButton
+            size="small"
+            type="warning"
+            secondary
+            :disabled="!as.nativeSupport.nativeInput.available"
+            @click="() => wm.augmentOverlayWindow.resetPosition()"
+            >{{
+              t('settings.multiWindow.augmentOverlayWindow.resetWindowPosition.button')
+            }}</NButton
+          >
+        </SettingsRow>
+        <template #footer>
+          <div class="text-[11px] leading-4 text-black/50 dark:text-white/50">
+            {{ t('settings.multiWindow.augmentOverlayWindow.description.lineA') }}
+          </div>
+        </template>
+      </SettingsSection>
     </div>
   </NScrollbar>
 </template>
@@ -329,12 +392,14 @@ import SettingsSection from '@main-window/settings-navigation/NavigableSettingsS
 import { useInstance } from '@renderer-shared/shards'
 import { useAppCommonStore } from '@renderer-shared/shards/app-common/store'
 import {
+  AkariAugmentOverlayWindow,
   AkariCdTimerWindow,
   AkariOpggWindow,
   WindowManagerRenderer
 } from '@renderer-shared/shards/window-manager'
 import { AkariOngoingGameWindow } from '@renderer-shared/shards/window-manager'
 import {
+  useAugmentOverlayWindowStore,
   useAuxWindowStore,
   useCdTimerWindowStore,
   useOngoingGameWindowStore,
@@ -353,6 +418,7 @@ const aws = useAuxWindowStore()
 const ows = useOpggWindowStore()
 const ogws = useOngoingGameWindowStore()
 const ctws = useCdTimerWindowStore()
+const aows = useAugmentOverlayWindowStore()
 
 const wm = useInstance(WindowManagerRenderer)
 </script>

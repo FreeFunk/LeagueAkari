@@ -537,6 +537,33 @@ const targetDefinitions = [
     descriptionKey: 'settings.multiWindow.cdTimerWindow.reverseAdjustmentDirection.description'
   },
   {
+    id: 'multi-window.augment-overlay',
+    route: { tab: 'multi-window' },
+    labelKey: 'settings.multiWindow.augmentOverlayWindow.title',
+    searchable: false
+  },
+  {
+    id: 'multi-window.augment-overlay.enabled',
+    route: { tab: 'multi-window' },
+    parentId: 'multi-window.augment-overlay',
+    labelKey: 'settings.multiWindow.augmentOverlayWindow.enabled.label',
+    descriptionKey: 'settings.multiWindow.augmentOverlayWindow.enabled.description'
+  },
+  {
+    id: 'multi-window.augment-overlay.shortcut',
+    route: { tab: 'multi-window' },
+    parentId: 'multi-window.augment-overlay',
+    labelKey: 'settings.multiWindow.augmentOverlayWindow.showShortcut.label',
+    descriptionKey: 'settings.multiWindow.augmentOverlayWindow.showShortcut.description'
+  },
+  {
+    id: 'multi-window.augment-overlay.reset-position',
+    route: { tab: 'multi-window' },
+    parentId: 'multi-window.augment-overlay',
+    labelKey: 'settings.multiWindow.augmentOverlayWindow.resetWindowPosition.label',
+    descriptionKey: 'settings.multiWindow.augmentOverlayWindow.resetWindowPosition.description'
+  },
+  {
     id: 'misc.respawn-timer',
     route: { tab: 'misc' },
     labelKey: 'settings.misc.respawnTimer.title',

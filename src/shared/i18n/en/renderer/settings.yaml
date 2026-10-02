@@ -358,6 +358,21 @@ settings:
       reverseAdjustmentDirection:
         label: Reverse Adjustment Direction
         description: Reverse the direction of the timer adjustment. When the wheel is moved up, the time decreases, and when the wheel is moved down, the time increases. This only takes effect when the timer type is count-up mode.
+    augmentOverlayWindow:
+      title: Augment Recommendation Overlay
+      titleRequireAdmin: Augment Recommendation Overlay (Admin Required)
+      description:
+        lineA: Only shown in Arena and Mayhem games. Requires borderless or windowed game mode.
+      enabled:
+        label: Enable Augment Recommendation Overlay
+        description: Show your champion's augment recommendations as an overlay during Arena or Mayhem games
+      showShortcut:
+        label: Show Shortcut
+        description: Hold the shortcut in-game to temporarily disable mouse pass-through for dragging the overlay
+      resetWindowPosition:
+        label: Reset Overlay Position
+        description: Reposition the overlay to the center of the primary screen
+        button: Reset
   misc:
     title: Misc
     respawnTimer:
