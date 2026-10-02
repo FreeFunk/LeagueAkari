@@ -1,4 +1,4 @@
-import { NATIVE_SUPPORT } from '@main/native'
+import { NATIVE_SUPPORT, isElevated } from '@main/native'
 import { GameClientMain } from '@main/shards/game-client'
 import type { AkariLogger } from '@main/shards/logger-factory'
 import type { DetectedAugmentCard } from '@shared/shards/window-manager'
@@ -17,6 +17,11 @@ import type { AugmentOverlayWindowSettings, AugmentOverlayWindowState } from './
  * 检测循环间隔 (ms)
  */
 const TICK_MS = 600
+
+/**
+ * 诊断转储的最小间隔 (ms)
+ */
+const GATES_DUMP_INTERVAL_MS = 15000
 
 /**
  * 预览截屏缩放比例, 用于廉价的弹卡检测
@@ -66,6 +71,8 @@ export class AugmentOverlayDetectController {
   private _timer: NodeJS.Timeout | null = null
   private _busy = false
   private _missStreak = MISS_STREAK_TO_HIDE
+  private _gatesConfirmedLogged = false
+  private _lastGatesDumpAt = 0
 
   constructor(
     private readonly _deps: {
@@ -109,6 +116,7 @@ export class AugmentOverlayDetectController {
 
     try {
       if (!NATIVE_SUPPORT.nativeInput.available || !this._deps.settings.autoDetect) {
+        this._dumpGatesThrottled('native-or-settings')
         return this._handleMiss()
       }
 
@@ -128,10 +136,28 @@ export class AugmentOverlayDetectController {
         return this._handleMiss()
       }
 
+      if (!this._gatesConfirmedLogged) {
+        this._gatesConfirmedLogged = true
+        this._deps.logger.info(
+          `[augment-detect] detection active: gameMode=${gameMode}, phase=${session.phase}`
+        )
+      }
+
       // 廉价预览: 低分辨率下检测三卡是否弹出
       const preview = await this._capture(PREVIEW_SCALE)
 
-      if (!preview || this._findIconBoxes(preview).length < 3) {
+      if (!preview) {
+        return this._handleMiss()
+      }
+
+      const previewBoxes = this._findIconBoxes(preview)
+
+      if (previewBoxes.length < 3) {
+        this._dumpGatesThrottled('no-cards-in-preview', {
+          image: preview,
+          previewBoxes: previewBoxes.length
+        })
+
         return this._handleMiss()
       }
 
@@ -146,6 +172,12 @@ export class AugmentOverlayDetectController {
       const row = pickCardRow(boxes)
 
       if (!row || row.length < 3) {
+        this._dumpGatesThrottled('no-card-row-in-full', {
+          image: full,
+          previewBoxes: previewBoxes.length,
+          fullBoxes: boxes.length
+        })
+
         return this._handleMiss()
       }
 
@@ -206,6 +238,41 @@ export class AugmentOverlayDetectController {
       this._deps.state.setDetectedCards(null)
       this._deps.onCardsCleared()
     }
+  }
+
+  /**
+   * 节流版诊断转储: 在支持的对局中无论识别是否成功都会记录
+   * 门槛状态与截屏, 用于远程排查"什么都没发生"类问题
+   */
+  private _dumpGatesThrottled(
+    stage: string,
+    extra?: { image?: Electron.NativeImage; previewBoxes?: number; fullBoxes?: number }
+  ) {
+    const now = Date.now()
+
+    if (!this._deps.settings.debugDump || now - this._lastGatesDumpAt < GATES_DUMP_INTERVAL_MS) {
+      return
+    }
+
+    this._lastGatesDumpAt = now
+
+    const session = this._deps.leagueClient.data.gameflow.session
+
+    void saveDebugDump({
+      image: extra?.image,
+      payload: {
+        stage,
+        capturedAt: new Date().toISOString(),
+        nativeInputAvailable: NATIVE_SUPPORT.nativeInput.available,
+        isElevated,
+        enabled: this._deps.settings.enabled,
+        autoDetect: this._deps.settings.autoDetect,
+        phase: session?.phase ?? null,
+        gameMode: session?.gameData.queue.gameMode ?? null,
+        previewBoxes: extra?.previewBoxes ?? null,
+        fullBoxes: extra?.fullBoxes ?? null
+      }
+    })
   }
 
   /**
