@@ -113,6 +113,27 @@ export const useOngoingGameWindowStore = defineStore(
   }
 )
 
+export const useAugmentOverlayWindowStore = defineStore(
+  'shard:window-manager-renderer/augment-overlay-window',
+  () => {
+    const settings = shallowReactive({
+      enabled: false,
+      opacity: 0.95,
+      pinned: true,
+      showShortcut: null as string | null
+    })
+
+    const basicWindowState = useBasicWindowStates()
+    const fakeShow = ref(false)
+
+    return {
+      settings,
+      ...basicWindowState,
+      fakeShow
+    }
+  }
+)
+
 export const useCdTimerWindowStore = defineStore(
   'shard:window-manager-renderer/cd-timer-window',
   () => {

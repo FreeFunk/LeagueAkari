@@ -1,5 +1,6 @@
 import { BaseAkariWindowRenderer } from './base-akari-window'
 import {
+  MAIN_SHARD_NAMESPACE_AUGMENT_OVERLAY_WINDOW,
   MAIN_SHARD_NAMESPACE_AUX_WINDOW,
   MAIN_SHARD_NAMESPACE_CD_TIMER_WINDOW,
   MAIN_SHARD_NAMESPACE_MAIN_WINDOW,
@@ -8,6 +9,7 @@ import {
   type WindowManagerRendererContext
 } from './context'
 import {
+  useAugmentOverlayWindowStore,
   useAuxWindowStore,
   useCdTimerWindowStore,
   useMainWindowStore,
@@ -185,5 +187,33 @@ export class AkariCdTimerWindow extends BaseAkariWindowRenderer<
   // 一份复制后的逻辑, 嗯. 就这样吧
   sendInGame(text: string) {
     return this._context.ipc.call(MAIN_SHARD_NAMESPACE_CD_TIMER_WINDOW, 'sendInGame', text)
+  }
+}
+
+export class AkariAugmentOverlayWindow extends BaseAkariWindowRenderer<
+  ReturnType<typeof useAugmentOverlayWindowStore>,
+  ReturnType<typeof useAugmentOverlayWindowStore>['settings']
+> {
+  static SHOW_WINDOW_SHORTCUT_TARGET_ID = `${MAIN_SHARD_NAMESPACE_AUGMENT_OVERLAY_WINDOW}/show`
+
+  constructor(_context: WindowManagerRendererContext) {
+    super(
+      _context,
+      MAIN_SHARD_NAMESPACE_AUGMENT_OVERLAY_WINDOW,
+      () => useAugmentOverlayWindowStore(),
+      () => useAugmentOverlayWindowStore().settings
+    )
+  }
+
+  setEnabled(value: boolean) {
+    return this._context.setting.set(MAIN_SHARD_NAMESPACE_AUGMENT_OVERLAY_WINDOW, 'enabled', value)
+  }
+
+  setShowShortcut(value: string | null) {
+    return this._context.setting.set(
+      MAIN_SHARD_NAMESPACE_AUGMENT_OVERLAY_WINDOW,
+      'showShortcut',
+      value
+    )
   }
 }

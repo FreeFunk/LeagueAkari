@@ -12,6 +12,7 @@ import { MobxUtilsMain } from '../mobx-utils'
 import { SelfUpdateMain } from '../self-update'
 import { SettingFactoryMain } from '../setting-factory'
 import { SetterSettingService } from '../setting-factory/setter-setting-service'
+import { AkariAugmentOverlayWindow } from './augment-overlay-window/window'
 import { AkariAuxWindow } from './aux-window/window'
 import { AkariCdTimerWindow } from './cd-timer-window/windows'
 import { WINDOW_MANAGER_MAIN_NAMESPACE, type WindowManagerMainContext } from './context'
@@ -38,6 +39,7 @@ export class WindowManagerMain implements IAkariShardInitDispose {
   public readonly opggWindow: AkariOpggWindow
   public readonly ongoingGameWindow: AkariOngoingGameWindow
   public readonly cdTimerWindow: AkariCdTimerWindow
+  public readonly augmentOverlayWindow: AkariAugmentOverlayWindow
 
   constructor(
     private readonly _ipc: AkariIpcMain,
@@ -71,12 +73,14 @@ export class WindowManagerMain implements IAkariShardInitDispose {
     this.opggWindow = new AkariOpggWindow(this._context)
     this.ongoingGameWindow = new AkariOngoingGameWindow(this._context)
     this.cdTimerWindow = new AkariCdTimerWindow(this._context)
+    this.augmentOverlayWindow = new AkariAugmentOverlayWindow(this._context)
     this._lifecycleController = new WindowManagerLifecycleController(this._context, {
       mainWindow: this.mainWindow,
       auxWindow: this.auxWindow,
       opggWindow: this.opggWindow,
       ongoingGameWindow: this.ongoingGameWindow,
-      cdTimerWindow: this.cdTimerWindow
+      cdTimerWindow: this.cdTimerWindow,
+      augmentOverlayWindow: this.augmentOverlayWindow
     })
   }
 

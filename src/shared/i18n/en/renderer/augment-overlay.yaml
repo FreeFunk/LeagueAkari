@@ -1,0 +1,10 @@
+augmentOverlay:
+  loading: Loading recommendations…
+  noData: No recommendation data
+  retry: Retry
+  hint: Hold the hotkey to move this window
+  tier:
+    silver: Silver Augments
+    gold: Gold Augments
+    prismatic: Prismatic Augments
+    unknown: Augments

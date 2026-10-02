@@ -1,3 +1,4 @@
+import type { AkariAugmentOverlayWindow } from './augment-overlay-window/window'
 import type { AkariAuxWindow } from './aux-window/window'
 import { isSystemBackgroundMaterialSupported } from './background-material-resolver'
 import type { AkariCdTimerWindow } from './cd-timer-window/windows'
@@ -12,6 +13,7 @@ interface WindowManagerWindows {
   opggWindow: AkariOpggWindow
   ongoingGameWindow: AkariOngoingGameWindow
   cdTimerWindow: AkariCdTimerWindow
+  augmentOverlayWindow: AkariAugmentOverlayWindow
 }
 
 export class WindowManagerLifecycleController {
@@ -56,6 +58,7 @@ export class WindowManagerLifecycleController {
     await this._windows.opggWindow.onInit()
     await this._windows.ongoingGameWindow.onInit()
     await this._windows.cdTimerWindow.onInit()
+    await this._windows.augmentOverlayWindow.onInit()
   }
 
   finish() {
