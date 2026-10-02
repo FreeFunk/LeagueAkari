@@ -365,10 +365,16 @@ settings:
         lineA: Supports Arena and Mayhem only. Requires borderless or windowed game mode.
       enabled:
         label: Enable Augment Recommendation Overlay
-        description: Once enabled, hold the shortcut in-game to show your champion's augment recommendations, release to hide
+        description: When the augment draft appears in-game, automatically show recommendation badges above the cards and hide it after the pick
+      autoDetect:
+        label: Auto Detect Cards
+        description: Automatically capture the screen during supported games to detect the augment draft and annotate each card. Disable to use the manual shortcut only
+      debugDump:
+        label: Recognition Debug Dump
+        description: Save recognition screenshots and results to userdata/augment-debug for troubleshooting detection issues
       showShortcut:
         label: Show Shortcut
-        description: Hold to show the overlay, release to hide. The overlay is mouse pass-through by default and never blocks game input
+        description: 'Fallback manual view of the recommendation list: hold to show, release to hide'
       resetWindowPosition:
         label: Reset Overlay Position
         description: Reposition the overlay to the right-center of the primary screen

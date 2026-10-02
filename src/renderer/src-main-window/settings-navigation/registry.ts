@@ -550,6 +550,20 @@ const targetDefinitions = [
     descriptionKey: 'settings.multiWindow.augmentOverlayWindow.enabled.description'
   },
   {
+    id: 'multi-window.augment-overlay.auto-detect',
+    route: { tab: 'multi-window' },
+    parentId: 'multi-window.augment-overlay',
+    labelKey: 'settings.multiWindow.augmentOverlayWindow.autoDetect.label',
+    descriptionKey: 'settings.multiWindow.augmentOverlayWindow.autoDetect.description'
+  },
+  {
+    id: 'multi-window.augment-overlay.debug-dump',
+    route: { tab: 'multi-window' },
+    parentId: 'multi-window.augment-overlay',
+    labelKey: 'settings.multiWindow.augmentOverlayWindow.debugDump.label',
+    descriptionKey: 'settings.multiWindow.augmentOverlayWindow.debugDump.description'
+  },
+  {
     id: 'multi-window.augment-overlay.shortcut',
     route: { tab: 'multi-window' },
     parentId: 'multi-window.augment-overlay',

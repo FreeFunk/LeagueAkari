@@ -341,6 +341,32 @@
           />
         </SettingsRow>
         <SettingsRow
+          setting-id="multi-window.augment-overlay.auto-detect"
+          :disabled="!as.nativeSupport.nativeInput.available"
+          :label="t('settings.multiWindow.augmentOverlayWindow.autoDetect.label')"
+          :label-description="t('settings.multiWindow.augmentOverlayWindow.autoDetect.description')"
+          :label-width="400"
+        >
+          <NSwitch
+            size="small"
+            :disabled="!as.nativeSupport.nativeInput.available"
+            :value="aows.settings.autoDetect"
+            @update:value="(val) => wm.augmentOverlayWindow.setAutoDetect(val)"
+          />
+        </SettingsRow>
+        <SettingsRow
+          setting-id="multi-window.augment-overlay.debug-dump"
+          :label="t('settings.multiWindow.augmentOverlayWindow.debugDump.label')"
+          :label-description="t('settings.multiWindow.augmentOverlayWindow.debugDump.description')"
+          :label-width="400"
+        >
+          <NSwitch
+            size="small"
+            :value="aows.settings.debugDump"
+            @update:value="(val) => wm.augmentOverlayWindow.setDebugDump(val)"
+          />
+        </SettingsRow>
+        <SettingsRow
           setting-id="multi-window.augment-overlay.shortcut"
           :disabled="!as.nativeSupport.nativeInput.available"
           :label-width="400"

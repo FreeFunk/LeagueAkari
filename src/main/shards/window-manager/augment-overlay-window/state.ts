@@ -1,3 +1,4 @@
+import type { DetectedAugmentCard } from '@shared/shards/window-manager'
 import { Rectangle } from 'electron'
 import { makeAutoObservable, observableRef } from 'mobx'
 
@@ -13,6 +14,16 @@ export class AugmentOverlayWindowSettings {
    */
   showShortcut: string | null = null
 
+  /**
+   * 自动识别游戏内海克斯三卡并展示推荐
+   */
+  autoDetect: boolean = true
+
+  /**
+   * 识别调试: 保存截屏与识别结果到 userData/augment-debug
+   */
+  debugDump: boolean = false
+
   setEnabled(enabled: boolean) {
     this.enabled = enabled
   }
@@ -27,6 +38,14 @@ export class AugmentOverlayWindowSettings {
 
   setShowShortcut(showShortcut: string | null) {
     this.showShortcut = showShortcut
+  }
+
+  setAutoDetect(autoDetect: boolean) {
+    this.autoDetect = autoDetect
+  }
+
+  setDebugDump(debugDump: boolean) {
+    this.debugDump = debugDump
   }
 
   constructor() {
@@ -50,6 +69,11 @@ export class AugmentOverlayWindowState {
    */
   fakeShow: boolean = false
 
+  /**
+   * 最近一次自动识别到的海克斯三卡, null 表示当前无识别结果
+   */
+  detectedCards: DetectedAugmentCard[] | null = null
+
   setStatus(status: 'normal' | 'maximized' | 'minimized') {
     this.status = status
   }
@@ -70,9 +94,14 @@ export class AugmentOverlayWindowState {
     this.fakeShow = fakeShow
   }
 
+  setDetectedCards(detectedCards: DetectedAugmentCard[] | null) {
+    this.detectedCards = detectedCards
+  }
+
   constructor() {
     makeAutoObservable(this, {
-      trackedBounds: observableRef
+      trackedBounds: observableRef,
+      detectedCards: observableRef
     })
   }
 }

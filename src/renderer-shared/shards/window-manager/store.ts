@@ -1,5 +1,6 @@
 import type {
   BackgroundMaterialSetting,
+  DetectedAugmentCard,
   DownloadTask,
   MainWindowCloseAction
 } from '@shared/shards/window-manager'
@@ -120,16 +121,20 @@ export const useAugmentOverlayWindowStore = defineStore(
       enabled: false,
       opacity: 0.95,
       pinned: true,
-      showShortcut: null as string | null
+      showShortcut: null as string | null,
+      autoDetect: true,
+      debugDump: false
     })
 
     const basicWindowState = useBasicWindowStates()
     const fakeShow = ref(false)
+    const detectedCards = ref<DetectedAugmentCard[] | null>(null)
 
     return {
       settings,
       ...basicWindowState,
-      fakeShow
+      fakeShow,
+      detectedCards
     }
   }
 )

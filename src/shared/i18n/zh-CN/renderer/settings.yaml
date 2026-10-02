@@ -363,10 +363,16 @@ settings:
         lineA: 仅支持斗魂竞技场与海克斯大乱斗，需将游戏画面切换为无边框或窗口模式
       enabled:
         label: 启用海克斯推荐悬浮条
-        description: 开启后，在对局中长按快捷键即可显示当前英雄的海克斯强化推荐，松开自动隐藏
+        description: 识别到游戏内弹出海克斯三卡时，自动在卡片上方显示当前英雄的推荐标注，选择结束后自动消失
+      autoDetect:
+        label: 自动识别三卡
+        description: 对局中自动截屏检测海克斯选择界面并逐卡标注推荐。关闭后仅能通过快捷键手动查看推荐列表
+      debugDump:
+        label: 识别调试转储
+        description: 将识别过程中的截屏与结果保存到 userdata/augment-debug 目录，用于排查识别偏差问题
       showShortcut:
         label: 显示快捷键
-        description: 长按显示推荐悬浮条，松开自动隐藏。悬浮条默认鼠标穿透，不会影响游戏操作
+        description: 手动查看推荐列表的兜底方式：长按显示，松开隐藏
       resetWindowPosition:
         label: 重置悬浮条位置
         description: 将悬浮条重新放置到主屏幕右侧居中

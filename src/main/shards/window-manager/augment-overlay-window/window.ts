@@ -2,12 +2,15 @@ import { is } from '@electron-toolkit/utils'
 import { NATIVE_SUPPORT } from '@main/native'
 import { GameClientMain } from '@main/shards/game-client'
 import icon from '@resources/LA_ICON.ico?asset&asarUnpack'
+import type { DetectedAugmentCard } from '@shared/shards/window-manager'
 import { screen } from 'electron'
 import { compareShallow } from 'mobx'
 import { z } from 'zod'
 
 import { BaseAkariWindow } from '../base-akari-window'
 import type { WindowManagerMainContext } from '../context'
+import { AugmentOverlayDetectController } from './detect-controller'
+import { AugmentDetectTemplateLoader } from './detect-template-loader'
 import { AugmentOverlayWindowSettings, AugmentOverlayWindowState } from './state'
 
 /**
@@ -31,6 +34,8 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
   public shortcutTargetId: string
 
   private _didDefaultPosition = false
+  private _templates: AugmentDetectTemplateLoader
+  private _detectController: AugmentOverlayDetectController
 
   private _applyOverlayWindowBehavior() {
     if (!this._window || this._window.isDestroyed()) {
@@ -86,7 +91,9 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
             NATIVE_SUPPORT.nativeInput.available ? (value as boolean) : false,
           transform: ({ value }) => NATIVE_SUPPORT.nativeInput.available && value
         },
-        showShortcut: { default: settings.showShortcut, schema: z.string().nullable() }
+        showShortcut: { default: settings.showShortcut, schema: z.string().nullable() },
+        autoDetect: { default: settings.autoDetect, schema: z.boolean() },
+        debugDump: { default: settings.debugDump, schema: z.boolean() }
       },
       browserWindowOptions: {
         title: AkariAugmentOverlayWindow.TITLE,
@@ -115,6 +122,81 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
     })
 
     this.shortcutTargetId = `${this._namespace}/show`
+
+    this._templates = new AugmentDetectTemplateLoader(this._leagueClient, this._logger)
+    this._detectController = new AugmentOverlayDetectController({
+      leagueClient: this._leagueClient,
+      settings: this.settings,
+      state: this.state,
+      templates: this._templates,
+      logger: this._logger,
+      onCardsDetected: (cards) => this._handleCardsDetected(cards),
+      onCardsCleared: () => this._handleCardsCleared()
+    })
+  }
+
+  /**
+   * 识别到三卡后, 将悬浮窗自动定位到三卡上方并显示
+   */
+  private _handleCardsDetected(cards: DetectedAugmentCard[]) {
+    if (!this._window) {
+      return
+    }
+
+    const display = screen.getPrimaryDisplay()
+    const { width: screenWidth, height: screenHeight } = display.size
+    const rowLeft = Math.min(...cards.map((card) => card.x)) * screenWidth
+    const rowRight = Math.max(...cards.map((card) => card.x + card.width)) * screenWidth
+    const rowTop = Math.min(...cards.map((card) => card.y)) * screenHeight
+
+    const [windowWidth, windowHeight] = this._window.getSize()
+    const workArea = display.workArea
+    const x = Math.round(
+      Math.min(
+        Math.max(display.bounds.x + (rowLeft + rowRight) / 2 - windowWidth / 2, workArea.x),
+        workArea.x + workArea.width - windowWidth
+      )
+    )
+    const y = Math.round(Math.max(display.bounds.y + rowTop - windowHeight - 16, workArea.y))
+
+    this._window.setPosition(x, y)
+    this.show(true)
+    this._applyOverlayWindowBehavior()
+
+    if (!this.state.fakeShow) {
+      this._window.setIgnoreMouseEvents(true)
+    }
+  }
+
+  private _handleCardsCleared() {
+    if (!this.state.fakeShow) {
+      this.hide()
+    }
+  }
+
+  private _watchDetectController() {
+    this._mobxUtils.reaction(
+      () => {
+        const session = this._leagueClient.data.gameflow.session
+        const gameMode = session?.gameData.queue.gameMode
+
+        return [
+          this.settings.enabled,
+          this.settings.autoDetect,
+          NATIVE_SUPPORT.nativeInput.available,
+          this._windowManager.state.isManagerFinishedInit,
+          session?.phase === 'InProgress' && (gameMode === 'CHERRY' || gameMode === 'KIWI')
+        ]
+      },
+      ([enabled, autoDetect, native, finishedInit, inSupportedGame]) => {
+        if (enabled && autoDetect && native && finishedInit && inSupportedGame) {
+          this._detectController.start()
+        } else {
+          this._detectController.stop()
+        }
+      },
+      { fireImmediately: true, equals: compareShallow, delay: 1000 }
+    )
   }
 
   private _watchAugmentOverlayWindow() {
@@ -223,13 +305,14 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
     }
 
     this._watchAugmentOverlayWindow()
+    this._watchDetectController()
   }
 
   protected override getStatePropKeys() {
-    return ['fakeShow'] as const
+    return ['fakeShow', 'detectedCards'] as const
   }
 
   protected override getSettingPropKeys() {
-    return ['enabled', 'showShortcut'] as const
+    return ['enabled', 'showShortcut', 'autoDetect', 'debugDump'] as const
   }
 }

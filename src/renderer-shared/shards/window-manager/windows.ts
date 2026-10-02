@@ -216,4 +216,20 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindowRenderer<
       value
     )
   }
+
+  setAutoDetect(value: boolean) {
+    return this._context.setting.set(
+      MAIN_SHARD_NAMESPACE_AUGMENT_OVERLAY_WINDOW,
+      'autoDetect',
+      value
+    )
+  }
+
+  setDebugDump(value: boolean) {
+    return this._context.setting.set(
+      MAIN_SHARD_NAMESPACE_AUGMENT_OVERLAY_WINDOW,
+      'debugDump',
+      value
+    )
+  }
 }

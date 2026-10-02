@@ -24,3 +24,26 @@ export interface DownloadTask {
   /** 结束时间戳 */
   endTime?: number
 }
+
+/**
+ * 自动识别到的单张海克斯卡片 (海克斯推荐悬浮条)
+ */
+export interface DetectedAugmentCard {
+  /**
+   * 识别出的海克斯 ID, null 表示置信度不足无法识别
+   */
+  augmentId: number | null
+
+  /**
+   * 识别置信度 0~1
+   */
+  confidence: number
+
+  /**
+   * 卡片图标的屏幕比例坐标 (0~1)
+   */
+  x: number
+  y: number
+  width: number
+  height: number
+}
