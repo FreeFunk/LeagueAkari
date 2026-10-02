@@ -119,7 +119,7 @@ export const useAugmentOverlayWindowStore = defineStore(
   () => {
     const settings = shallowReactive({
       enabled: false,
-      opacity: 0.95,
+      opacity: 1,
       pinned: true,
       showShortcut: null as string | null,
       autoDetect: true,

@@ -85,6 +85,12 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
           schema: z.boolean(),
           transform: () => true
         },
+        opacity: {
+          default: settings.opacity,
+          schema: z.literal(1),
+          restore: () => 1,
+          transform: () => 1
+        },
         enabled: {
           default: settings.enabled,
           schema: z.boolean(),

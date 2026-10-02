@@ -7,7 +7,11 @@ export class AugmentOverlayWindowSettings {
 
   pinned: boolean = true
 
-  opacity: number = 0.95
+  /**
+   * 固定为 1: Electron 在部分环境下设置非 1 不透明度会导致窗口完全不可见
+   * (参考 https://github.com/electron/electron/issues/45730)
+   */
+  opacity: number = 1
 
   /**
    * 按住时临时取消鼠标穿透并可拖动窗口的热键
