@@ -1,9 +1,7 @@
 <template>
   <div
     ref="wrapperEl"
-    class="box-border flex flex-col overflow-hidden rounded bg-[#1a1a1da0] p-1.5"
-    :class="detectMode ? '' : 'w-fit'"
-    :style="detectWrapperStyle"
+    class="box-border flex w-full flex-col overflow-hidden rounded bg-[#1a1a1da0] p-1.5"
   >
     <SetupInAppScope />
 
@@ -116,21 +114,6 @@ const gradeById = computed(() => {
 const detectedCards = computed(() => aows.detectedCards)
 const detectMode = computed(() => (detectedCards.value?.length ?? 0) > 0)
 
-/**
- * 逐卡模式下窗口宽度对齐三卡行的宽度, 使推荐块与真实卡片逐一对齐
- */
-const detectWrapperStyle = computed(() => {
-  if (!detectMode.value) {
-    return undefined
-  }
-
-  const cards = detectedCards.value ?? []
-  const left = Math.min(...cards.map((card) => card.x))
-  const right = Math.max(...cards.map((card) => card.x + card.width))
-
-  return { width: `${Math.round((right - left) * window.screen.width)}px` }
-})
-
 function gradeOf(card: DetectedAugmentCard): AugmentGrade | null {
   if (card.augmentId === null) {
     return null
@@ -187,7 +170,7 @@ function loadRecommendations() {
       }
 
       details.value = null
-      logger.warn('augment-overlay loadRecommendations failed', error)
+      logger.warn('augment-overlay', 'loadRecommendations failed', error)
     })
     .finally(() => {
       if (generation === loadGeneration) {
@@ -205,10 +188,10 @@ watch(
 )
 
 onMounted(() => {
-  logger.info('[augment-overlay] renderer mounted')
+  logger.info('augment-overlay', 'renderer mounted')
 
   window.addEventListener('error', (event) => {
-    logger.error(`[augment-overlay] renderer error: ${event.message}`)
+    logger.error('augment-overlay', `renderer error: ${event.message}`)
   })
 })
 
@@ -216,7 +199,8 @@ watch(
   [championDataMode, currentChampionId],
   ([mode, championId]) => {
     logger.info(
-      `[augment-overlay] recommendation source updated: mode=${mode ?? 'none'}, championId=${championId ?? 'none'}`
+      'augment-overlay',
+      `recommendation source updated: mode=${mode ?? 'none'}, championId=${championId ?? 'none'}`
     )
   },
   { immediate: true }
@@ -226,7 +210,8 @@ watch(
   () => aows.detectedCards,
   (cards) => {
     logger.info(
-      `[augment-overlay] detected cards updated: ${JSON.stringify(
+      'augment-overlay',
+      `detected cards updated: ${JSON.stringify(
         cards?.map((card) => ({ id: card.augmentId, c: Number(card.confidence.toFixed(2)) })) ??
           null
       )}`

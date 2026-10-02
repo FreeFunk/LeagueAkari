@@ -143,7 +143,7 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
   }
 
   /**
-   * 识别到三卡后, 将悬浮窗自动定位到三卡上方并显示
+   * 识别到三卡后, 将悬浮窗自动调整为与三卡行等宽、定位到三卡上方并显示
    */
   private _handleCardsDetected(cards: DetectedAugmentCard[]) {
     if (!this._window) {
@@ -156,17 +156,20 @@ export class AkariAugmentOverlayWindow extends BaseAkariWindow<
     const rowRight = Math.max(...cards.map((card) => card.x + card.width)) * screenWidth
     const rowTop = Math.min(...cards.map((card) => card.y)) * screenHeight
 
-    const [windowWidth, windowHeight] = this._window.getSize()
+    // 窗口宽度与三卡行等宽, 使逐卡标注与真实卡片一一对齐
+    const targetWidth = Math.round(rowRight - rowLeft + 24)
+    const targetHeight = 64
+
     const workArea = display.workArea
     const x = Math.round(
       Math.min(
-        Math.max(display.bounds.x + (rowLeft + rowRight) / 2 - windowWidth / 2, workArea.x),
-        workArea.x + workArea.width - windowWidth
+        Math.max(display.bounds.x + (rowLeft + rowRight) / 2 - targetWidth / 2, workArea.x),
+        workArea.x + workArea.width - targetWidth
       )
     )
-    const y = Math.round(Math.max(display.bounds.y + rowTop - windowHeight - 16, workArea.y))
+    const y = Math.round(Math.max(display.bounds.y + rowTop - targetHeight - 12, workArea.y))
 
-    this._window.setPosition(x, y)
+    this._window.setBounds({ x, y, width: targetWidth, height: targetHeight })
     this.show(true)
     this._applyOverlayWindowBehavior()
 

@@ -39,6 +39,11 @@ const HIT_STREAK_TO_SHOW = 2
 const IDENTIFY_CONFIDENCE_THRESHOLD = 0.55
 
 /**
+ * 裁剪区域亮度方差低于该值时视为空白/纯色区域 (未对准图标), 判定不可识别
+ */
+const FLAT_CROP_VARIANCE_THRESHOLD = 144
+
+/**
  * 判定一次有效识别所需的最少可识别卡片数
  */
 const MIN_IDENTIFIED_CARDS = 2
@@ -263,6 +268,26 @@ export class AugmentOverlayDetectController {
       TEMPLATE_SIZE * TEMPLATE_SIZE * 4
     )
 
+    // 空白/纯色区域判定: 亮度方差过低说明槽位未对准图标
+    let mean = 0
+    const lums: number[] = []
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      const lum = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]
+      lums.push(lum)
+      mean += lum
+    }
+
+    mean /= lums.length
+    let variance = 0
+
+    for (const lum of lums) {
+      variance += (lum - mean) ** 2
+    }
+
+    variance /= lums.length
+    const isFlat = variance < FLAT_CROP_VARIANCE_THRESHOLD
+
     let bestId: number | null = null
     let bestDiff = Number.POSITIVE_INFINITY
 
@@ -285,7 +310,7 @@ export class AugmentOverlayDetectController {
     const confidence = Math.max(0, 1 - bestDiff / maxDiff)
 
     return {
-      augmentId: confidence >= IDENTIFY_CONFIDENCE_THRESHOLD ? bestId : null,
+      augmentId: !isFlat && confidence >= IDENTIFY_CONFIDENCE_THRESHOLD ? bestId : null,
       confidence,
       x: box.x,
       y: box.y,
